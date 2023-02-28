@@ -1,13 +1,10 @@
-import compression from "compression";
-import express from "express";
-import ejs from "ejs";
-import { urlencoded, json } from "body-parser";
-import { connect } from "mongose";
-import morgan from "morgan";
-import cors from "cors";
-import { dbProduction, dbTest } from "./config/database";
-import "./models";
-import "./routes";
+const compression = require("compression");
+const express = require("express");
+const ejs = require("ejs");
+const bodyParser = require("body-parser");
+const mongoose = require("mongoose");
+const morgan = require("morgan");
+const cors = "cors";
 
 //STARTING//
 const app = express();
@@ -21,8 +18,10 @@ app.use("/public", __dirname + "/public");
 app.use("/public/images", __dirname + "/public/images");
 
 //SETUP MONGODB//
-const dbURI = isProduction ? dbProduction : dbTest;
-connect(dbURI, { useNewUrlParse: true });
+const dbs = require("./config/database");
+const bodyParser = require("body-parser");
+const dbURI = isProduction ? dbs.dbProduction : dbs.dbTest;
+mongoose.connect(dbURI, { useNewUrlParser: true });
 
 //SETUP EJS//
 app.set("view engine", ejs);
@@ -34,14 +33,17 @@ app.disable("x-powered-by");
 app.use(compression());
 
 //SETUP BODY-PARSER//
-app.use(urlencoded({ extended: false, limit: 1.5 * 1024 * 1024 }));
+app.use(bodyParser.urlencoded({ extended: false, limit: 1.5 * 1024 * 1024 }));
 app.use(json({ limit: 1.5 * 1024 * 1024 }));
 
+//MODELS//
+require("./models");
+
 //CONTROL ROUTES//
-app.use("/", "./routes");
+app.use("/", require("./routes"));
 
 //404 - ROUTE//
-app.use((req, res) => {
+app.use((req, res, next) => {
   const err = new Error("Not Found");
   err.status = 404;
   // eslint-disable-next-line no-undef
@@ -52,6 +54,7 @@ app.use((req, res) => {
 app.use((err, req, res, next) => {
   res.status(err.status || 500);
   if (err.status !== 404) console.warn("Error: ", err.message, new Date());
+  res.json({ erros: { message: err.message, status: err.status } });
 });
 
 //LISTEN OUTPUT//
